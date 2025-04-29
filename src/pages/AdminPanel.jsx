@@ -16,53 +16,73 @@ const AdminPanel = () => {
   }, []);
 
   const fetchQuestions = async () => {
-    const res = await axios.get(API_URL);
-    setQuestions(res.data);
+    try {
+      const res = await axios.get(API_URL);
+      setQuestions(res.data);
 
-    // Extract unique categories
-    const uniqueCategories = ['All', ...new Set(res.data.map(q => q.category))];
-    setCategories(uniqueCategories);
+      // Extract unique categories
+      const uniqueCategories = ['All', ...new Set(res.data.map(q => q.category))];
+      setCategories(uniqueCategories);
+    } catch (error) {
+      console.error('Error fetching questions:', error.message);
+    }
   };
 
   const handleChange = (e) => {
-    setFormData({...formData, [e.target.name]: e.target.value});
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editId) {
-      await axios.put(`${API_URL}/${editId}`, formData);
-    } else {
-      await axios.post(API_URL, formData);
+    try {
+      if (editId) {
+        // Updating existing question
+        await axios.put(`${API_URL}/${editId}`, {
+          ...formData,
+        });
+        alert('Question updated successfully!');
+      } else {
+        // Adding new question
+        await axios.post(API_URL, formData);
+        alert('Question added successfully!');
+      }
+      setFormData({ category: '', question: '', answer: '' });
+      setEditId(null);
+      fetchQuestions();
+    } catch (error) {
+      console.error('Error submitting form:', error.message);
+      alert('Something went wrong. Please try again.');
     }
-    setFormData({ category: '', question: '', answer: '' });
-    setEditId(null);
-    fetchQuestions();
   };
 
   const handleEdit = (q) => {
     setFormData({ category: q.category, question: q.question, answer: q.answer });
     setEditId(q._id);
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll up to form when editing
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete?')) {
-      await axios.delete(`${API_URL}/${id}`);
-      fetchQuestions();
+    if (window.confirm('Are you sure you want to delete this question?')) {
+      try {
+        await axios.delete(`${API_URL}/${id}`);
+        fetchQuestions();
+        alert('Question deleted successfully!');
+      } catch (error) {
+        console.error('Error deleting question:', error.message);
+        alert('Failed to delete question.');
+      }
     }
   };
 
   const handleCategoryChange = (e) => {
     setSelectedCategory(e.target.value);
-    setVisibleCount(5); // Reset on filter change
+    setVisibleCount(5); // Reset visible count on filter change
   };
 
-  // Filter questions by selected category
   const filteredQuestions = selectedCategory === 'All'
     ? questions
     : questions.filter(q => q.category === selectedCategory);
 
-  // Only show limited questions
   const visibleQuestions = filteredQuestions.slice(0, visibleCount);
 
   return (
@@ -71,35 +91,47 @@ const AdminPanel = () => {
 
       {/* Add / Edit Form */}
       <form onSubmit={handleSubmit} className="bg-white p-4 rounded shadow-md mb-8">
-        <input 
-          type="text" 
-          name="category" 
-          placeholder="Category" 
+        <input
+          type="text"
+          name="category"
+          placeholder="Category"
           value={formData.category}
           onChange={handleChange}
           className="border p-2 w-full mb-2"
           required
         />
-        <input 
-          type="text" 
-          name="question" 
-          placeholder="Question" 
+        <input
+          type="text"
+          name="question"
+          placeholder="Question"
           value={formData.question}
           onChange={handleChange}
           className="border p-2 w-full mb-2"
           required
         />
-        <textarea 
-          name="answer" 
-          placeholder="Answer" 
+        <textarea
+          name="answer"
+          placeholder="Answer"
           value={formData.answer}
           onChange={handleChange}
           className="border p-2 w-full mb-2"
           required
         />
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
+        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
           {editId ? 'Update' : 'Add'} Question
         </button>
+        {editId && (
+          <button
+            type="button"
+            onClick={() => {
+              setFormData({ category: '', question: '', answer: '' });
+              setEditId(null);
+            }}
+            className="ml-4 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+          >
+            Cancel Edit
+          </button>
+        )}
       </form>
 
       {/* Category Filter */}
@@ -142,8 +174,18 @@ const AdminPanel = () => {
                     <td className="border p-2">{q.question}</td>
                     <td className="border p-2">{q.answer}</td>
                     <td className="border p-2">
-                      <button onClick={() => handleEdit(q)} className="bg-yellow-400 px-2 py-1 mr-2 rounded">Edit</button>
-                      <button onClick={() => handleDelete(q._id)} className="bg-red-500 text-white px-2 py-1 rounded">Delete</button>
+                      <button
+                        onClick={() => handleEdit(q)}
+                        className="bg-yellow-400 px-2 py-1 mr-2 rounded hover:bg-yellow-500"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(q._id)}
+                        className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
